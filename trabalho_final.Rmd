@@ -1,0 +1,104 @@
+---
+title: "Estat?stica Não Paramétrica - trabalho final"
+author: "José Augusto Barros de Oliveira"
+date: "17 de junho de 2017"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library("ggplot2", lib.loc="~/R/win-library/3.4")
+library("moments", lib.loc="~/R/win-library/3.4")
+library("nortest", lib.loc="~/R/win-library/3.4")
+library("bootstrap", lib.loc="~/R/win-library/3.4")
+library("boot", lib.loc="~/R/win-library/3.4")
+```
+
+
+```{r 001}
+esta <- read.csv("esta.csv")
+x <- esta$media
+round(x,1)
+summary(x)
+hist(x)
+boxplot(x)
+kurtosis(x)
+skewness(x)
+avg <- mean(x)
+s2 <- var(x)
+```
+
+```{r 002}
+avg <- mean(x)
+s <- sd(x)
+limites <- qnorm(c(.2,.4,.6,.8),avg,s)
+xclass <- ifelse((x < limites[1]),"1 menor que 609,45",
+    ifelse ((x >= limites[1] & x < limites[2]), "2 609,45 a 640,23",
+      ifelse ((x >= limites[2] & x < limites[3]), "3 640,23 a 666,74",
+        ifelse ((x >= limites[3] & x < limites[4]), "4 666,74 a 697,52","5 maior que 697,52"))))
+table(xclass)
+txclass <- table(xclass)
+ei <- 45 * 0.2
+Qobs <- (txclass[[1]]-ei)^2/ei + (txclass[[2]]-ei)^2/ei + (txclass[[3]]-ei)^2/ei + (txclass[[4]]-ei)^2/ei
+Qobs
+df <- 5-2-1
+pchisq(Qobs, df, lower.tail = FALSE)
+pearson.test(x, n.classes=5)
+```
+
+```{r 003}
+x <- sort(x)
+avg <- mean(x)
+s <- sd(x)
+z <- (x-avg)/s
+f <- pnorm(z)
+fn <- vector()
+for (i in 1:45){ 
+tmp <- (1/45)*i
+fn <- c(fn,tmp)
+}
+D <- max(abs(fn-f))
+D
+lillie.test(x)
+
+cvm.test(x)
+
+```
+
+###Jackknife
+
+```{r 004}
+rm(i)
+sdn <- numeric()
+for (i in 1:length(x)){
+temp <- x[-i]
+sdi <- sd(temp)
+sdn <- c(sdn,sdi)
+}
+(jsd <- (length(x)*sd(x)) - ((length(x)-1)*mean(sdn)))
+sd(x)
+(bias <- sd(x)-jsd)
+
+jackknife(x, theta=sd)
+
+```
+###Bootstrap para se da media de x
+
+```{r 005}
+tetaestrelab <- numeric()
+B <- 1000
+for (i in 1:B) {
+  temp <- sample(x,length(x),replace=TRUE)
+  tetaestrela <- mean(temp)
+  tetaestrelab <- c(tetaestrelab,tetaestrela)
+}
+head(tetaestrelab)
+(seboot <- sd(tetaestrelab))
+(seMLE <- sd(x)/sqrt(length(x)))
+(bias <- seMLE-seboot)
+
+se <- function(dados,indices){
+  sd(dados[indices])/sqrt(length(dados))
+}
+boot(x, statistic=se, R=1000)
+```
