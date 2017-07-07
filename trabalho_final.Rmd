@@ -5,16 +5,18 @@ date: "17 de junho de 2017"
 output: word_document
 ---
 
-```{r setup, include=FALSE}
+```{r inicial}
 knitr::opts_chunk$set(echo = TRUE)
 library("ggplot2", lib.loc="~/R/win-library/3.4")
 library("moments", lib.loc="~/R/win-library/3.4")
 library("nortest", lib.loc="~/R/win-library/3.4")
 library("bootstrap", lib.loc="~/R/win-library/3.4")
 library("boot", lib.loc="~/R/win-library/3.4")
+library("tree", lib.loc="~/R/win-library/3.4")
+library("randomForest", lib.loc="~/R/win-library/3.4")
 ```
 
-
+##Análise descritiva
 ```{r 001}
 esta <- read.csv("esta.csv")
 x <- esta$media
@@ -28,6 +30,7 @@ avg <- mean(x)
 s2 <- var(x)
 ```
 
+##Teste Qui-quadrado
 ```{r 002}
 avg <- mean(x)
 s <- sd(x)
@@ -45,7 +48,7 @@ df <- 5-2-1
 pchisq(Qobs, df, lower.tail = FALSE)
 pearson.test(x, n.classes=5)
 ```
-
+###Kolmogorov-Smirnov
 ```{r 003}
 x <- sort(x)
 avg <- mean(x)
@@ -65,7 +68,7 @@ cvm.test(x)
 
 ```
 
-###Jackknife
+##Jackknife
 
 ```{r 004}
 rm(i)
@@ -82,7 +85,7 @@ sd(x)
 jackknife(x, theta=sd)
 
 ```
-###Bootstrap para se da media de x
+##Bootstrap
 
 ```{r 005}
 tetaestrelab <- numeric()
@@ -101,4 +104,42 @@ se <- function(dados,indices){
   sd(dados[indices])/sqrt(length(dados))
 }
 boot(x, statistic=se, R=1000)
+```
+##CART
+```{r 006}
+set.seed(69)
+dadosrmbh <- read.csv(dadosrmbh.csv)
+dados <- dadosrmbh[, c(6,8,9,12,47,49)]
+dados <- dados[complete.cases(dados),]
+colnames(dados)<-tolower(colnames(dados))
+dados$id_dependencia_adm_esc <- as.factor(dados$id_dependencia_adm_esc)
+dados$tp_cor_raca <- as.factor(dados$tp_cor_raca)
+
+temp <- sample(1:nrow(dados), size=25072)
+treino <- dados[temp,]
+teste <- dados[-temp,]
+
+modelo5 <- tree(media_total ~ ., data=treino)
+plot(modelo5)
+text(modelo5, pretty=0, cex=0.75)
+summary(modelo5)
+
+modelo6<-cv.tree(modelo5)
+plot(modelo6$size, modelo6$dev, type="b")
+ychapeu <- predict(modelo5, newdata=teste)
+plot(ychapeu, teste$media_total)
+abline(0,1)
+MSE <- mean((ychapeu-teste$media_total)^2)
+sqrt(MSE)
+
+modelo8 <- randomForest(media_total ~., data=treino, mtry=2, importance=TRUE)
+modelo8
+ychapeu_rf <- predict(modelo8, newdata=teste)
+plot(ychapeu_rf, teste$media_total)
+abline(0,1, col="red")
+MSE_rf <- mean((ychapeu_rf-teste$media_total)^2)
+MSE_rf
+sqrt(MSE_rf)
+importance(modelo8)
+varImpPlot(modelo8)
 ```
